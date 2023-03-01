@@ -20,6 +20,7 @@
     "rules": {
         "prettier/prettier": ["error", { "singleQuote": true, "semi": false, "endOfLine": "auto" }],
         "space-before-function-paren": ["error", "never"],
-        "react/react-in-jsx-scope": "off"
+        "react/react-in-jsx-scope": "off",
+        "comma-dangle": ["error", "never"]
     }
 }
