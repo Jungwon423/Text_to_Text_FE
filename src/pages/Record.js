@@ -13,6 +13,20 @@ function AudioRecorder() {
   const [analyserNode, setAnalyserNode] = useState(null)
   const [test, setTest] = useState(0)
 
+  useEffect(() => {
+    // create a new Uint8Array to store the frequency data
+    if (recording === false) return
+    const dataArray = new Uint8Array(analyserNode.frequencyBinCount)
+
+    function getAudioLevel() {
+      analyserNode.getByteFrequencyData(dataArray)
+      const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
+      setAudioLevel(avg)
+      requestAnimationFrame(getAudioLevel)
+    }
+    requestAnimationFrame(getAudioLevel)
+  }, [recording])
+
   const startRecording = async() => {
     const audioContext = new AudioContext()
 
@@ -40,27 +54,24 @@ function AudioRecorder() {
         // connect the sourceNode to the analyserNode
         sourceNode.connect(analyserNode)
 
-        // create a new Uint8Array to store the frequency data
-        const dataArray = new Uint8Array(analyserNode.frequencyBinCount)
+        // // create a new function to get the audio level
+        // function getAudioLevel() {
+        //   analyserNode.getByteFrequencyData(dataArray)
+        //   const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
+        //   return avg
+        // }
 
-        // create a new function to get the audio level
-        function getAudioLevel() {
-          analyserNode.getByteFrequencyData(dataArray)
-          const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
-          return avg
-        }
-
-        // update the audio level state every 100ms
-        const intervalId = setInterval(() => {
-          setAudioLevel(getAudioLevel())
-        }, 100)
+        // // update the audio level state every 100ms
+        // const intervalId = setInterval(() => {
+        //   setAudioLevel(getAudioLevel())
+        // }, 100)
 
         // return a cleanup function to stop the interval and disconnect the nodes
-        return () => {
-          clearInterval(intervalId)
-          sourceNode.disconnect()
-          analyserNode.disconnect()
-        }
+        // return () => {
+        //   clearInterval(intervalId)
+        //   sourceNode.disconnect()
+        //   analyserNode.disconnect()
+        // }
       })
       .catch((error) => {
         console.log(error)
