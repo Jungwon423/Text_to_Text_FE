@@ -1,15 +1,13 @@
 /* eslint-disable prettier/prettier */
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
-import About from './pages/Record'
-import Home from './pages/Home'
+import Record from './pages/Record'
 
 function App() {
   return (
     <div className="App">
       <Routes>
-        <Route path="/home" element={<Home></Home>}></Route>
-        <Route path="/" element={<About></About>}></Route>
+        <Route path="/" element={<Record></Record>}></Route>
       </Routes>
     </div>
   )
