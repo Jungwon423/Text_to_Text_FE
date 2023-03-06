@@ -8,14 +8,22 @@ function AudioRecorder() {
   const [mediaRecorder, setMediaRecorder] = useState(null) // stream을 녹음하는 객체
   const [audioChunks, setAudioChunks] = useState([])
   const [audioLevel, setAudioLevel] = useState(0) // 성량
+  const [audioLevelCount, setAudioLevelCount] = useState(0) // 일정 수준 이하로 내려간 성량 count (=1/60)
 
   const [sourceNode, setSourceNode] = useState(null)
   const [analyserNode, setAnalyserNode] = useState(null)
-  const [test, setTest] = useState(0)
+
+  useEffect(() => {
+    if (audioLevelCount > 120 && mediaRecorder.state === 'recording') stopRecording()
+
+    if (audioLevel < 30) setAudioLevelCount(audioLevelCount + 1)
+    else setAudioLevelCount(0)
+  }, [audioLevel])
 
   useEffect(() => {
     // create a new Uint8Array to store the frequency data
     if (recording === false) return
+    if (mediaRecorder == null) return
     const dataArray = new Uint8Array(analyserNode.frequencyBinCount)
 
     function getAudioLevel() {
@@ -50,25 +58,6 @@ function AudioRecorder() {
 
         // connect the sourceNode to the analyserNode
         sourceNode.connect(analyserNode)
-
-        // // create a new function to get the audio level
-        // function getAudioLevel() {
-        //   analyserNode.getByteFrequencyData(dataArray)
-        //   const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
-        //   return avg
-        // }
-
-        // // update the audio level state every 100ms
-        // const intervalId = setInterval(() => {
-        //   setAudioLevel(getAudioLevel())
-        // }, 100)
-
-        // return a cleanup function to stop the interval and disconnect the nodes
-        // return () => {
-        //   clearInterval(intervalId)
-        //   sourceNode.disconnect()
-        //   analyserNode.disconnect()
-        // }
       })
       .catch((error) => {
         console.log(error)
