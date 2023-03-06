@@ -14,6 +14,8 @@ function AudioRecorder() {
   const [sourceNode, setSourceNode] = useState(null)
   const [analyserNode, setAnalyserNode] = useState(null)
 
+  const [request, setRequest] = useState(null)
+
   useEffect(() => {
     if (audioLevelCount > 120 && mediaRecorder.state === 'recording') stopRecording()
 
@@ -115,7 +117,9 @@ function AudioRecorder() {
         <button onClick={downloadAudio} disabled={audioChunks.length === 0}>
           Download Recording
         </button>
-        <div>Audio Level: {audioLevel.toFixed(2)}</div>
+      <div>Audio Level: {audioLevel.toFixed(2)}</div>
+      <div>{request}</div>
+
       </div>
   )
 }
