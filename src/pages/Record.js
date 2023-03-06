@@ -4,49 +4,65 @@
 import React, { useState, useEffect } from 'react'
 
 function AudioRecorder() {
-  const [recording, setRecording] = useState(false)
-  const [audioStream, setAudioStream] = useState(null)
-  const [mediaRecorder, setMediaRecorder] = useState(null)
+  const [recording, setRecording] = useState(false) // 녹음 여부
+  const [mediaRecorder, setMediaRecorder] = useState(null) // stream을 녹음하는 객체
   const [audioChunks, setAudioChunks] = useState([])
-  const [audioLevel, setAudioLevel] = useState(0)
-
-  useEffect(() => {
-    const updateAudioLevel = () => {
-      if (!mediaRecorder) return
-      const audioContext = new AudioContext()
-      const source = audioContext.createMediaStreamSource(audioStream)
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 32
-      source.connect(analyser)
-      const bufferLength = analyser.frequencyBinCount
-      const dataArray = new Uint8Array(bufferLength)
-      analyser.getByteFrequencyData(dataArray)
-      const average = dataArray.reduce((acc, curr) => acc + curr, 0) / bufferLength
-      setAudioLevel(average)
-      requestAnimationFrame(updateAudioLevel)
-    }
-    requestAnimationFrame(updateAudioLevel)
-  }, [mediaRecorder, audioStream])
+  const [audioLevel, setAudioLevel] = useState(0) // 성량
 
   const startRecording = async() => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      setAudioStream(stream)
-      setRecording(true)
-      const mediaRecorder = new MediaRecorder(stream)
-      setMediaRecorder(mediaRecorder)
-      mediaRecorder.addEventListener('dataavailable', handleDataAvailable)
-      mediaRecorder.start()
-    } catch (err) {
-      console.error('Failed to get user media', err)
-    }
+    const audioContext = new AudioContext()
+
+    // get a MediaStream object from a user's microphone
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        setRecording(true)
+        const mediaRecorder = new MediaRecorder(stream)
+        setMediaRecorder(mediaRecorder)
+        mediaRecorder.addEventListener('dataavailable', handleDataAvailable)
+        mediaRecorder.start()
+
+        // create a new MediaStreamAudioSourceNode object from the MediaStream
+        const sourceNode = audioContext.createMediaStreamSource(stream)
+
+        // create a new AnalyserNode object
+        const analyserNode = audioContext.createAnalyser()
+        analyserNode.fftSize = 256
+
+        // connect the sourceNode to the analyserNode
+        sourceNode.connect(analyserNode)
+
+        // create a new Uint8Array to store the frequency data
+        const dataArray = new Uint8Array(analyserNode.frequencyBinCount)
+
+        // create a new function to get the audio level
+        function getAudioLevel() {
+          analyserNode.getByteFrequencyData(dataArray)
+          const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
+          return avg
+        }
+
+        // update the audio level state every 100ms
+        const intervalId = setInterval(() => {
+          setAudioLevel(getAudioLevel())
+        }, 100)
+
+        // return a cleanup function to stop the interval and disconnect the nodes
+        return () => {
+          clearInterval(intervalId)
+          sourceNode.disconnect()
+          analyserNode.disconnect()
+        }
+      })
+      .catch((error) => {
+        console.log(error)
+      })
   }
 
   const stopRecording = () => {
     if (!mediaRecorder) return
     mediaRecorder.stop()
     setRecording(false)
-    setAudioStream(null)
+    console.log('recording 종료 =============================================================')
   }
 
   const handleDataAvailable = (event) => {
@@ -65,25 +81,19 @@ function AudioRecorder() {
     setAudioChunks([])
   }
 
-  // useEffect(() => {
-  //   if (audioLevel < 20) {
-  //     stopRecording()
-  //   }
-  // }, [audioLevel, stopRecording])
-
   return (
-    <div>
-      <button onClick={startRecording} disabled={recording}>
-        Start Recording
-      </button>
-      <button onClick={stopRecording} disabled={!recording}>
-        Stop Recording
-      </button>
-      <button onClick={downloadAudio} disabled={audioChunks.length === 0}>
-        Download Recording
-      </button>
-      <div>Audio Level: {audioLevel.toFixed(2)}</div>
-    </div>
+      <div>
+        <button onClick={startRecording} disabled={recording}>
+          Start Recording
+        </button>
+        <button onClick={stopRecording} disabled={!recording}>
+          Stop Recording
+        </button>
+        <button onClick={downloadAudio} disabled={audioChunks.length === 0}>
+          Download Recording
+        </button>
+        <div>Audio Level: {audioLevel.toFixed(2)}</div>
+      </div>
   )
 }
 
