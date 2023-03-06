@@ -2,6 +2,7 @@
 /* eslint-disable prettier/prettier */
 
 import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 
 function AudioRecorder() {
   const [recording, setRecording] = useState(false) // 녹음 여부
@@ -64,13 +65,27 @@ function AudioRecorder() {
       })
   }
 
-  const stopRecording = () => {
+  const stopRecording = async() => {
     if (!mediaRecorder) return
     mediaRecorder.stop()
     setRecording(false)
     console.log('recording 종료 =============================================================')
     sourceNode.disconnect()
     analyserNode.disconnect()
+    console.log('sourceNode & analyserNode disconnect =============================================================')
+
+    const formData = new FormData()
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+    formData.append('audioBlob', audioBlob)
+
+    await axios({
+      method: 'POST',
+      url: 'http://ai.zigdeal.shop/',
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      data: formData
+    })
   }
 
   const handleDataAvailable = (event) => {
