@@ -39,9 +39,6 @@ function AudioRecorder() {
         mediaRecorder.addEventListener('dataavailable', handleDataAvailable)
         mediaRecorder.start()
 
-        setTest(3)
-        console.log(test)
-
         // create a new MediaStreamAudioSourceNode object from the MediaStream
         const sourceNode = audioContext.createMediaStreamSource(stream)
         setSourceNode(sourceNode)
