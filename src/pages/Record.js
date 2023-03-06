@@ -17,6 +17,42 @@ function AudioRecorder() {
   const [request, setRequest] = useState(null)
 
   useEffect(() => {
+    if (mediaRecorder == null) return
+    console.log('audioChuncks = ')
+    console.log(audioChunks)
+    const formData = new FormData()
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+
+    console.log('audioBlob = ')
+    console.log(audioBlob)
+    formData.append('audioBlob', audioBlob)
+    formData.append('test', 'test')
+
+    console.log('formData = ')
+    for (const key of formData.entries()) {
+      console.log(key)
+    }
+
+    axios({
+      method: 'POST',
+      // url: 'http://ai.zigdeal.shop/chat',
+      url: 'http://127.0.0.1:5000/chat',
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      data: formData
+    }).then(response => {
+      console.log(response.data.result)
+      setRequest(response.data.result)
+    })
+
+    // await axios({
+    //   method: 'GET',
+    //   url: 'http://127.0.0.1:5000/chat'
+    // }).then(response => { setRequest(response.result) })
+  }, [audioChunks])
+
+  useEffect(() => {
     if (audioLevelCount > 120 && mediaRecorder.state === 'recording') stopRecording()
 
     if (audioLevel < 30) setAudioLevelCount(audioLevelCount + 1)
@@ -48,6 +84,7 @@ function AudioRecorder() {
         const mediaRecorder = new MediaRecorder(stream)
         setMediaRecorder(mediaRecorder)
         mediaRecorder.addEventListener('dataavailable', handleDataAvailable)
+
         mediaRecorder.start()
 
         // create a new MediaStreamAudioSourceNode object from the MediaStream
@@ -70,34 +107,25 @@ function AudioRecorder() {
   const stopRecording = async() => {
     if (!mediaRecorder) return
     mediaRecorder.stop()
+
     setRecording(false)
     console.log('recording 종료 =============================================================')
     sourceNode.disconnect()
     analyserNode.disconnect()
     console.log('sourceNode & analyserNode disconnect =============================================================')
-
-    const formData = new FormData()
-    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
-    formData.append('audioBlob', audioBlob)
-
-    await axios({
-      method: 'POST',
-      url: 'http://ai.zigdeal.shop/',
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      data: formData
-    })
+    setAudioLevelCount(0)
   }
 
   const handleDataAvailable = (event) => {
     if (event.data.size > 0) {
+      console.log('data-available')
       setAudioChunks((chunks) => [...chunks, event.data])
     }
   }
 
   const downloadAudio = () => {
     const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+    console.log(audioBlob)
     const audioUrl = URL.createObjectURL(audioBlob)
     const link = document.createElement('a')
     link.href = audioUrl
