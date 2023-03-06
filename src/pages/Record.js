@@ -9,6 +9,10 @@ function AudioRecorder() {
   const [audioChunks, setAudioChunks] = useState([])
   const [audioLevel, setAudioLevel] = useState(0) // 성량
 
+  const [sourceNode, setSourceNode] = useState(null)
+  const [analyserNode, setAnalyserNode] = useState(null)
+  const [test, setTest] = useState(0)
+
   const startRecording = async() => {
     const audioContext = new AudioContext()
 
@@ -21,11 +25,16 @@ function AudioRecorder() {
         mediaRecorder.addEventListener('dataavailable', handleDataAvailable)
         mediaRecorder.start()
 
+        setTest(3)
+        console.log(test)
+
         // create a new MediaStreamAudioSourceNode object from the MediaStream
         const sourceNode = audioContext.createMediaStreamSource(stream)
+        setSourceNode(sourceNode)
 
         // create a new AnalyserNode object
         const analyserNode = audioContext.createAnalyser()
+        setAnalyserNode(analyserNode)
         analyserNode.fftSize = 256
 
         // connect the sourceNode to the analyserNode
@@ -63,6 +72,8 @@ function AudioRecorder() {
     mediaRecorder.stop()
     setRecording(false)
     console.log('recording 종료 =============================================================')
+    sourceNode.disconnect()
+    analyserNode.disconnect()
   }
 
   const handleDataAvailable = (event) => {
