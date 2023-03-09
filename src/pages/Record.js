@@ -1,8 +1,11 @@
+/* eslint-disable object-curly-spacing */
+/* eslint-disable space-before-function-paren */
 /* eslint-disable no-unused-vars */
 /* eslint-disable prettier/prettier */
 
-import React, { useState, useEffect } from 'react'
+import React, {useState, useEffect} from 'react'
 import axios from 'axios'
+import ReactAudioPlayer from 'react-audio-player'
 
 function AudioRecorder() {
   const [recording, setRecording] = useState(false) // 녹음 여부
@@ -14,6 +17,7 @@ function AudioRecorder() {
   const [sourceNode, setSourceNode] = useState(null)
   const [analyserNode, setAnalyserNode] = useState(null)
 
+  const [myChat, setMyChat] = useState(null)
   const [request, setRequest] = useState(null)
 
   useEffect(() => {
@@ -21,7 +25,7 @@ function AudioRecorder() {
     console.log('audioChuncks = ')
     console.log(audioChunks)
     const formData = new FormData()
-    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+    const audioBlob = new Blob(audioChunks, {type: 'audio/wav'})
 
     console.log('audioBlob = ')
     console.log(audioBlob)
@@ -36,24 +40,48 @@ function AudioRecorder() {
     axios({
       method: 'POST',
       // url: 'http://ai.zigdeal.shop/chat',
-      url: 'http://127.0.0.1:5000/chat',
+      url: 'http://127.0.0.1:5000/chat/transcribe',
       headers: {
         'Content-Type': 'multipart/form-data'
       },
       data: formData
-    }).then(response => {
+    }).then((response) => {
       console.log(response.data.result)
-      setRequest(response.data.result)
-    })
+      setMyChat(response.data.result)
 
-    // await axios({
-    //   method: 'GET',
-    //   url: 'http://127.0.0.1:5000/chat'
-    // }).then(response => { setRequest(response.result) })
+      const data = {
+        text: response.data.result
+      }
+
+      axios({
+        method: 'POST',
+        // url: 'http://ai.zigdeal.shop/chat',
+        url: 'http://127.0.0.1:5000/chat/askGPT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data
+      }).then((response) => {
+        setRequest(response.data.result)
+
+        axios({
+          method: 'POST',
+          url: 'http://127.0.0.1:5000/chat/TTS',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          data: {text: response.data.result}
+        }).then((response) => {
+          console.log(response)
+        })
+      })
+    })
   }, [audioChunks])
 
   useEffect(() => {
-    if (audioLevelCount > 120 && mediaRecorder.state === 'recording') stopRecording()
+    if (audioLevelCount > 120 && mediaRecorder.state === 'recording') {
+      stopRecording()
+    }
 
     if (audioLevel < 30) setAudioLevelCount(audioLevelCount + 1)
     else setAudioLevelCount(0)
@@ -67,18 +95,20 @@ function AudioRecorder() {
 
     function getAudioLevel() {
       analyserNode.getByteFrequencyData(dataArray)
-      const avg = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
+      const avg =
+        dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length
       setAudioLevel(avg)
       requestAnimationFrame(getAudioLevel)
     }
     requestAnimationFrame(getAudioLevel)
   }, [recording])
 
-  const startRecording = async() => {
+  const startRecording = async () => {
     const audioContext = new AudioContext()
 
     // get a MediaStream object from a user's microphone
-    navigator.mediaDevices.getUserMedia({ audio: true })
+    navigator.mediaDevices
+      .getUserMedia({audio: true})
       .then((stream) => {
         setRecording(true)
         const mediaRecorder = new MediaRecorder(stream)
@@ -104,15 +134,19 @@ function AudioRecorder() {
       })
   }
 
-  const stopRecording = async() => {
+  const stopRecording = async () => {
     if (!mediaRecorder) return
     mediaRecorder.stop()
 
     setRecording(false)
-    console.log('recording 종료 =============================================================')
+    console.log(
+      'recording 종료 ============================================================='
+    )
     sourceNode.disconnect()
     analyserNode.disconnect()
-    console.log('sourceNode & analyserNode disconnect =============================================================')
+    console.log(
+      'sourceNode & analyserNode disconnect ============================================================='
+    )
     setAudioLevelCount(0)
   }
 
@@ -124,31 +158,38 @@ function AudioRecorder() {
   }
 
   const downloadAudio = () => {
-    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
-    console.log(audioBlob)
-    const audioUrl = URL.createObjectURL(audioBlob)
-    const link = document.createElement('a')
-    link.href = audioUrl
-    link.download = 'recording.wav'
-    link.click()
-    setAudioChunks([])
+    axios({
+      method: 'POST',
+      url: 'http://127.0.0.1:5000/speak'
+    }).then((response) => {
+      console.log(response)
+    })
+    // const audioBlob = new Blob(audioChunks, {type: 'audio/wav'})
+    // console.log(audioBlob)
+    // const audioUrl = URL.createObjectURL(audioBlob)
+    // const link = document.createElement('a')
+    // link.href = audioUrl
+    // link.download = 'recording.wav'
+    // link.click()
+    // setAudioChunks([])
   }
 
   return (
-      <div>
-        <button onClick={startRecording} disabled={recording}>
-          Start Recording
-        </button>
-        <button onClick={stopRecording} disabled={!recording}>
-          Stop Recording
-        </button>
-        <button onClick={downloadAudio} disabled={audioChunks.length === 0}>
-          Download Recording
-        </button>
+    <div>
+      <button onClick={startRecording} disabled={recording}>
+        Start Recording
+      </button>
+      <button onClick={stopRecording} disabled={!recording}>
+        Stop Recording
+      </button>
+      <button onClick={downloadAudio} disabled={audioChunks.length === 0}>
+        Download Recording
+      </button>
       <div>Audio Level: {audioLevel.toFixed(2)}</div>
-      <div>{request}</div>
-
-      </div>
+      <div>내가 한 말 : {myChat}</div>
+      <div>ChatGPT가 한 말 : {request}</div>
+      {/* <ReactAudioPlayer src="http://127.0.0.1:5000/speak" autoPlay controls /> */}
+    </div>
   )
 }
 
