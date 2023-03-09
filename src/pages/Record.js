@@ -3,7 +3,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable prettier/prettier */
 
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useRef} from 'react'
 import axios from 'axios'
 import ReactAudioPlayer from 'react-audio-player'
 
@@ -20,62 +20,59 @@ function AudioRecorder() {
   const [myChat, setMyChat] = useState(null)
   const [request, setRequest] = useState(null)
 
+  const [audioSource, setAudioSource] = useState('')
+  const [audioUrl, setAudioUrl] = useState(null)
+
   useEffect(() => {
     if (mediaRecorder == null) return
-    console.log('audioChuncks = ')
-    console.log(audioChunks)
     const formData = new FormData()
     const audioBlob = new Blob(audioChunks, {type: 'audio/wav'})
 
-    console.log('audioBlob = ')
-    console.log(audioBlob)
     formData.append('audioBlob', audioBlob)
-    formData.append('test', 'test')
 
-    console.log('formData = ')
-    for (const key of formData.entries()) {
-      console.log(key)
-    }
+    // axios({
+    //   method: 'POST',
+    //   // url: 'http://ai.zigdeal.shop/chat',
+    //   url: 'http://127.0.0.1:5000/chat/transcribe',
+    //   headers: {
+    //     'Content-Type': 'multipart/form-data'
+    //   },
+    //   data: formData
+    // }).then((response) => {
+    //   console.log(response.data.result)
+    //   setMyChat(response.data.result)
 
-    axios({
-      method: 'POST',
-      // url: 'http://ai.zigdeal.shop/chat',
-      url: 'http://127.0.0.1:5000/chat/transcribe',
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      data: formData
-    }).then((response) => {
-      console.log(response.data.result)
-      setMyChat(response.data.result)
+    //   const data = {
+    //     text: response.data.result
+    //   }
 
-      const data = {
-        text: response.data.result
-      }
+    //   axios({
+    //     method: 'POST',
+    //     // url: 'http://ai.zigdeal.shop/chat',
+    //     url: 'http://127.0.0.1:5000/chat/askGPT',
+    //     headers: {
+    //       'Content-Type': 'application/json'
+    //     },
+    //     data
+    //   }).then((response) => {
+    //     setRequest(response.data.result)
 
-      axios({
-        method: 'POST',
-        // url: 'http://ai.zigdeal.shop/chat',
-        url: 'http://127.0.0.1:5000/chat/askGPT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        data
-      }).then((response) => {
-        setRequest(response.data.result)
-
-        axios({
-          method: 'POST',
-          url: 'http://127.0.0.1:5000/chat/TTS',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          data: {text: response.data.result}
-        }).then((response) => {
-          console.log(response)
-        })
-      })
-    })
+    //     axios({
+    //       method: 'POST',
+    //       url: 'http://127.0.0.1:5000/chat/TTS',
+    //       headers: {
+    //         'Content-Type': 'application/json'
+    //       },
+    //       data: {text: response.data.result}
+    //     }).then((response) => {
+    //       console.log(response)
+    //       console.log(response.data)
+    //       const audioBlob = response.data
+    //       const audioUrl = URL.createObjectURL(audioBlob)
+    //       setAudioSrc(audioUrl)
+    //     })
+    //   })
+    // })
   }, [audioChunks])
 
   useEffect(() => {
@@ -139,20 +136,13 @@ function AudioRecorder() {
     mediaRecorder.stop()
 
     setRecording(false)
-    console.log(
-      'recording 종료 ============================================================='
-    )
     sourceNode.disconnect()
     analyserNode.disconnect()
-    console.log(
-      'sourceNode & analyserNode disconnect ============================================================='
-    )
     setAudioLevelCount(0)
   }
 
   const handleDataAvailable = (event) => {
     if (event.data.size > 0) {
-      console.log('data-available')
       setAudioChunks((chunks) => [...chunks, event.data])
     }
   }
@@ -160,9 +150,21 @@ function AudioRecorder() {
   const downloadAudio = () => {
     axios({
       method: 'POST',
-      url: 'http://127.0.0.1:5000/speak'
-    }).then((response) => {
-      console.log(response)
+      url: 'http://127.0.0.1:5000/chat/TTS',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      data: {text: '마이크테스트입니다.'},
+      responseType: 'arraybuffer'
+    }).then(async (response) => {
+      const audioContext = new AudioContext()
+      const audioBuffer = await audioContext.decodeAudioData(response.data)
+      const source = audioContext.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(audioContext.destination)
+      source.start() // 자동으로 오디오 시작되게
+      console.log('source : ', source)
+      setAudioSource(source)
     })
     // const audioBlob = new Blob(audioChunks, {type: 'audio/wav'})
     // console.log(audioBlob)
@@ -188,7 +190,9 @@ function AudioRecorder() {
       <div>Audio Level: {audioLevel.toFixed(2)}</div>
       <div>내가 한 말 : {myChat}</div>
       <div>ChatGPT가 한 말 : {request}</div>
-      {/* <ReactAudioPlayer src="http://127.0.0.1:5000/speak" autoPlay controls /> */}
+      <audio controls>
+        <source type="audio/mpeg" src={audioSource} />
+      </audio>
     </div>
   )
 }
